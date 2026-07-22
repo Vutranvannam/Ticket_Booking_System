@@ -1,0 +1,13 @@
+# env files
+.env
+.env.*
+!.env.example
+
+# system files
+.DS_Store
+Thumbs.db
+
+# build folders
+target/
+node_modules/
+dist/

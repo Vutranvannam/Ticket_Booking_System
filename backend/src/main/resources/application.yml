@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: ticket-booking-backend
+
+  profiles:
+    active: local

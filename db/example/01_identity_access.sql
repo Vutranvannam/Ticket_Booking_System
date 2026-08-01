@@ -20,7 +20,6 @@ CREATE TABLE users (
     phone           VARCHAR(20),
     avatar_url      VARCHAR(500),
     is_email_verified BOOLEAN       NOT NULL DEFAULT FALSE,
-    failed_login_attempts SMALLINT  NOT NULL DEFAULT 0,
     locked_until    TIMESTAMPTZ,
     last_login_at   TIMESTAMPTZ,
     version         INT             NOT NULL DEFAULT 0,
@@ -29,8 +28,7 @@ CREATE TABLE users (
     deleted_at      TIMESTAMPTZ,
 
     CONSTRAINT pk_users PRIMARY KEY (id),
-    CONSTRAINT ck_users_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
-    CONSTRAINT ck_users_failed_login CHECK (failed_login_attempts >= 0)
+    CONSTRAINT ck_users_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
 -- Partial unique: allow same email in soft-deleted rows
@@ -85,15 +83,12 @@ COMMENT ON TABLE permissions IS 'Fine-grained permission codes grouped by module
 -- PURPOSE: M:N junction linking users to roles
 -- ============================================================================
 CREATE TABLE user_roles (
-    id              UUID            NOT NULL DEFAULT gen_random_uuid(),
     user_id         UUID            NOT NULL,
     role_id         UUID            NOT NULL,
-    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT pk_user_roles PRIMARY KEY (id),
+    CONSTRAINT pk_user_roles PRIMARY KEY (user_id, role_id),
     CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT,
-    CONSTRAINT uk_user_roles UNIQUE (user_id, role_id)
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_user_roles_user_id ON user_roles (user_id);
@@ -104,39 +99,11 @@ CREATE INDEX idx_user_roles_role_id ON user_roles (role_id);
 -- PURPOSE: M:N junction linking roles to permissions
 -- ============================================================================
 CREATE TABLE role_permissions (
-    id              UUID            NOT NULL DEFAULT gen_random_uuid(),
     role_id         UUID            NOT NULL,
     permission_id   UUID            NOT NULL,
-    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT pk_role_permissions PRIMARY KEY (id),
     CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
-    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE RESTRICT,
-    CONSTRAINT uk_role_permissions UNIQUE (role_id, permission_id)
+    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_role_permissions_role_id ON role_permissions (role_id);
-
--- ============================================================================
--- TABLE: verification_tokens
--- PURPOSE: Time-limited tokens for email verification, password reset, 2FA
--- ============================================================================
-CREATE TABLE verification_tokens (
-    id              UUID            NOT NULL DEFAULT gen_random_uuid(),
-    user_id         UUID            NOT NULL,
-    token_hash      VARCHAR(255)    NOT NULL,
-    type            VARCHAR(30)     NOT NULL,
-    expires_at      TIMESTAMPTZ     NOT NULL,
-    used_at         TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT pk_verification_tokens PRIMARY KEY (id),
-    CONSTRAINT fk_vt_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT ck_vt_type CHECK (type IN ('EMAIL_VERIFICATION', 'PASSWORD_RESET', 'PHONE_VERIFICATION', 'TWO_FACTOR'))
-);
-
-CREATE INDEX idx_vt_token_hash ON verification_tokens (token_hash);
-CREATE INDEX idx_vt_user_type ON verification_tokens (user_id, type);
-CREATE INDEX idx_vt_expires_at ON verification_tokens (expires_at) WHERE used_at IS NULL;
-
-COMMENT ON TABLE verification_tokens IS 'Secure, expirable, single-use tokens for authentication flows — token stored as SHA256 hash';

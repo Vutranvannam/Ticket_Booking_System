@@ -2,7 +2,7 @@
 -- FILE: 04_show_management.sql
 -- MODULE: Show Management
 -- TABLES: shows, show_seat_inventory
--- DEPENDENCIES: 01_identity_access.sql (users), 02_venue_management.sql (halls, seats),
+-- DEPENDENCIES: 01_identity_access.sql (users), 02_venue_management.sql (venue_maps, seats),
 --               03_event_management.sql (events)
 -- NOTE: show_seat_inventory.pricing_tier_id FK added in 05_pricing.sql
 --       show_seat_inventory.booking_id FK added in 07_booking.sql
@@ -10,12 +10,12 @@
 
 -- ============================================================================
 -- TABLE: shows
--- PURPOSE: A scheduled showing of an event in a hall — the bookable unit
+-- PURPOSE: A scheduled showing of an event on a venue map — the bookable unit
 -- ============================================================================
 CREATE TABLE shows (
     id              UUID            NOT NULL DEFAULT gen_random_uuid(),
     event_id        UUID            NOT NULL,
-    hall_id         UUID            NOT NULL,
+    map_id          UUID            NOT NULL,
     start_time      TIMESTAMPTZ     NOT NULL,
     end_time        TIMESTAMPTZ     NOT NULL,
     booking_open_at TIMESTAMPTZ     NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE shows (
 
     CONSTRAINT pk_shows PRIMARY KEY (id),
     CONSTRAINT fk_shows_event FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_shows_hall FOREIGN KEY (hall_id) REFERENCES halls (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_shows_map FOREIGN KEY (map_id) REFERENCES venue_maps (id) ON DELETE RESTRICT,
     CONSTRAINT ck_shows_status CHECK (status IN ('SCHEDULED', 'OPEN', 'SOLD_OUT', 'ONGOING', 'COMPLETED', 'CANCELLED')),
     CONSTRAINT ck_shows_times CHECK (end_time > start_time),
     CONSTRAINT ck_shows_booking_window CHECK (booking_close_at > booking_open_at),
@@ -39,10 +39,10 @@ CREATE TABLE shows (
 );
 
 CREATE INDEX idx_shows_event_id ON shows (event_id);
-CREATE INDEX idx_shows_hall_id ON shows (hall_id);
+CREATE INDEX idx_shows_map_id ON shows (map_id);
 CREATE INDEX idx_shows_start_time ON shows (start_time) WHERE deleted_at IS NULL;
 CREATE INDEX idx_shows_status ON shows (status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_shows_hall_time ON shows (hall_id, start_time, end_time);
+CREATE INDEX idx_shows_map_time ON shows (map_id, start_time, end_time);
 
 COMMENT ON TABLE shows IS 'A specific scheduled showing — users book seats for a SHOW, not for an event';
 COMMENT ON COLUMN shows.available_seats IS 'Denormalized counter — avoids COUNT(*) on show_seat_inventory for every seat map load';

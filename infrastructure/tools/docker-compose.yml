@@ -1,0 +1,40 @@
+services:
+  dbeaver:
+    image: dbeaver/cloudbeaver:${DBEAVER_VERSION}
+    container_name: ${DBEAVER_CONTAINER_NAME}
+    restart: unless-stopped
+
+    ports:
+      - "${DBEAVER_PORT}:8978"
+
+    volumes:
+      - dbeaver_data:/opt/cloudbeaver/workspace
+
+    networks:
+      - tools_network
+
+  redisinsight:
+    image: redis/redisinsight:${REDISINSIGHT_VERSION}
+    container_name: ${REDISINSIGHT_CONTAINER_NAME}
+    restart: unless-stopped
+
+    ports:
+      - "${REDISINSIGHT_PORT}:5540"
+
+    volumes:
+      - redisinsight_data:/data
+
+    networks:
+      - tools_network
+
+volumes:
+  dbeaver_data:
+    name: dbeaver_data
+
+  redisinsight_data:
+    name: redisinsight_data
+
+networks:
+  tools_network:
+    name: tools_network
+    driver: bridge

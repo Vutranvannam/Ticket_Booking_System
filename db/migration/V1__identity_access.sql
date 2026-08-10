@@ -110,3 +110,62 @@ CREATE TABLE role_permissions (
 );
 
 CREATE INDEX idx_role_permissions_role_id ON role_permissions (role_id);
+
+-- ============================================================================
+-- SEED DATA — V1 (Identity & Access)
+-- NOTE: Permissions for V2–V5 modules will be seeded by their respective
+--       migration files (V2__, V3__, V4__, V9__).
+-- ============================================================================
+
+-- ── Roles ────────────────────────────────────────────────────────────────────
+-- All 4 roles are foundational and defined here once.
+-- Later migrations will extend role_permissions as new modules are introduced.
+INSERT INTO roles (id, name, description) VALUES
+    ('00000000-0000-0000-0000-000000000001', 'SUPER_ADMIN', 'Full platform access — reserved for internal ops team'),
+    ('00000000-0000-0000-0000-000000000002', 'ADMIN',       'Administrative access — manage users and platform configuration'),
+    ('00000000-0000-0000-0000-000000000003', 'ORGANIZER',   'Event organizer — create and manage own events and shows'),
+    ('00000000-0000-0000-0000-000000000004', 'CUSTOMER',    'Regular customer — browse events and book tickets');
+
+-- ── Permissions — USER module only (matches AppPermissions.java exactly) ──────
+INSERT INTO permissions (id, code, description, module) VALUES
+    ('10000000-0000-0000-0000-000000000001', 'USER_LIST',   'List all users',          'USER'),
+    ('10000000-0000-0000-0000-000000000002', 'USER_VIEW',   'View any user profile',   'USER'),
+    ('10000000-0000-0000-0000-000000000003', 'USER_UPDATE', 'Update any user profile', 'USER'),
+    ('10000000-0000-0000-0000-000000000004', 'USER_DELETE', 'Soft-delete a user',      'USER');
+
+-- ── Role → Permission assignments (V1 scope: USER_* only) ─────────────────────
+
+-- SUPER_ADMIN: all currently defined permissions (more will be added by later migrations)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT '00000000-0000-0000-0000-000000000001', id
+FROM permissions
+WHERE module = 'USER';
+
+-- ADMIN: full user management
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT '00000000-0000-0000-0000-000000000002', id
+FROM permissions
+WHERE code IN ('USER_LIST', 'USER_VIEW', 'USER_UPDATE', 'USER_DELETE');
+
+-- ORGANIZER: no USER permissions at V1
+-- (venue/event permissions will be granted in V2/V3 migrations)
+
+-- CUSTOMER: no USER permissions at V1
+-- (customers access their own data via /me endpoints — auth-only, no explicit permission needed)
+
+-- ── Default dev user — SUPER_ADMIN ───────────────────────────────────────────
+-- Password: Admin@123  (BCrypt, cost 12)
+-- !! Change credentials before deploying to any non-local environment !!
+INSERT INTO users (id, email, password_hash, full_name, is_email_verified, security_stamp, permission_version)
+VALUES (
+    'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'admin@ticketbooking.local',
+    '$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+    'Super Admin',
+    TRUE,
+    1,
+    1
+);
+
+INSERT INTO user_roles (user_id, role_id) VALUES
+    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '00000000-0000-0000-0000-000000000001');

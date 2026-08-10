@@ -14,13 +14,15 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface UserMapper {
 
-    @Mapping(target = "roles",       source = "roles", qualifiedByName = "mapRoles")
+    @Mapping(target = "roles", source = "roles", qualifiedByName = "mapRoles")
     @Mapping(target = "permissions", source = "roles", qualifiedByName = "mapPermissions")
+    @Mapping(target = "isEmailVerified", source = "emailVerified")
     UserResponse toResponse(User user);
 
     @Named("mapRoles")
     default Set<String> mapRoles(Set<Role> roles) {
-        if (roles == null) return Set.of();
+        if (roles == null)
+            return Set.of();
         return roles.stream()
                 .map(Role::getName)
                 .collect(Collectors.toSet());
@@ -28,7 +30,8 @@ public interface UserMapper {
 
     @Named("mapPermissions")
     default Set<String> mapPermissions(Set<Role> roles) {
-        if (roles == null) return Set.of();
+        if (roles == null)
+            return Set.of();
         return roles.stream()
                 .flatMap(role -> role.getPermissions() == null
                         ? java.util.stream.Stream.empty()

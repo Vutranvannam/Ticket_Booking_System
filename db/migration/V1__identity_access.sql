@@ -15,13 +15,15 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE users (
     id              UUID            NOT NULL DEFAULT gen_random_uuid(),
     email           VARCHAR(255)    NOT NULL,
-    password_hash   VARCHAR(255)    NOT NULL,
+    password_hash   VARCHAR(255),
     full_name       VARCHAR(150)    NOT NULL,
     phone           VARCHAR(20),
     avatar_url      VARCHAR(500),
     is_email_verified BOOLEAN       NOT NULL DEFAULT FALSE,
     locked_until    TIMESTAMPTZ,
     last_login_at   TIMESTAMPTZ,
+    security_stamp     BIGINT       NOT NULL DEFAULT 1,
+    permission_version BIGINT       NOT NULL DEFAULT 1,
     version         INT             NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
@@ -102,6 +104,7 @@ CREATE TABLE role_permissions (
     role_id         UUID            NOT NULL,
     permission_id   UUID            NOT NULL,
 
+    CONSTRAINT pk_role_permissions PRIMARY KEY (role_id, permission_id),
     CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
     CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE RESTRICT
 );

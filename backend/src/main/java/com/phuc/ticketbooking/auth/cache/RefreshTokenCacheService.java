@@ -1,8 +1,8 @@
 package com.phuc.ticketbooking.auth.cache;
 
 import com.phuc.ticketbooking.common.util.SHA256Hasher;
+import com.phuc.ticketbooking.common.config.AppProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -38,8 +38,7 @@ public class RefreshTokenCacheService {
 
     private final StringRedisTemplate stringRedisTemplate;
 
-    @Value("${app.jwt.refresh-token-expiry}")
-    private long refreshTokenExpirySeconds;
+    private final AppProperties appProperties;
 
     // -- Write -----------------------------------------------------------------
 
@@ -50,7 +49,7 @@ public class RefreshTokenCacheService {
     public void store(UUID userId, UUID sessionId, String rawToken) {
         String key  = refreshKey(userId, sessionId);
         String hash = SHA256Hasher.hash(rawToken);
-        stringRedisTemplate.opsForValue().set(key, hash, Duration.ofSeconds(refreshTokenExpirySeconds));
+        stringRedisTemplate.opsForValue().set(key, hash, Duration.ofSeconds(appProperties.jwt().refreshTokenExpiry()));
     }
 
     // -- Read ------------------------------------------------------------------

@@ -1,18 +1,24 @@
 package com.phuc.ticketbooking.auth.controller;
 
 import com.phuc.ticketbooking.auth.dto.TokenPair;
+import com.phuc.ticketbooking.auth.dto.request.ForgotPasswordRequest;
 import com.phuc.ticketbooking.auth.dto.request.LoginRequest;
 import com.phuc.ticketbooking.auth.dto.request.RegisterRequest;
+import com.phuc.ticketbooking.auth.dto.request.VerifyOldPasswordRequest;
+import com.phuc.ticketbooking.auth.dto.request.ResetPasswordRequest;
+import com.phuc.ticketbooking.auth.dto.request.VerifyResetOtpRequest;
+import com.phuc.ticketbooking.auth.dto.response.ForgotPasswordResponse;
+import com.phuc.ticketbooking.auth.dto.response.RefreshResponse;
 import com.phuc.ticketbooking.auth.dto.response.AuthResponse;
 import com.phuc.ticketbooking.auth.dto.response.SessionResponse;
+import com.phuc.ticketbooking.auth.dto.response.ResetTokenResponse;
 import com.phuc.ticketbooking.auth.security.AuthenticatedSession;
-import com.phuc.ticketbooking.auth.security.JwtTokenProvider;
 import com.phuc.ticketbooking.auth.service.application.AuthAppService;
+import com.phuc.ticketbooking.common.config.AppProperties;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -36,15 +42,7 @@ import java.util.UUID;
 public class AuthController {
 
         private final AuthAppService authAppService;
-        private final JwtTokenProvider jwtTokenProvider;
-
-        /**
-         * When {@code true}, the refresh-token cookie carries the {@code Secure} flag.
-         * Set to {@code true} in staging/production (HTTPS). Defaults to {@code false}
-         * for local HTTP development.
-         */
-        @Value("${app.security.cookie-secure:false}")
-        private boolean cookieSecure;
+        private final AppProperties appProperties;
 
         /** POST /api/auth/register */
         @PostMapping("/register")
@@ -64,10 +62,18 @@ public class AuthController {
 
         /** POST /api/auth/refresh */
         @PostMapping("/refresh")
-        public ResponseEntity<AuthResponse> refresh(
+        public ResponseEntity<RefreshResponse> refresh(
                         @CookieValue(name = "refreshToken") String refreshToken) {
                 TokenPair tokenPair = authAppService.refresh(refreshToken);
-                return buildResponseWithCookie(tokenPair, HttpStatus.OK);
+                ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                                .httpOnly(true)
+                                .secure(appProperties.security().cookieSecure())
+                                .path("/api/auth/refresh")
+                                .maxAge(tokenPair.refreshTokenExpiresIn())
+                                .build();
+                return ResponseEntity.ok()
+                                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                                .body(new RefreshResponse(tokenPair.accessToken(), tokenPair.expiresIn()));
         }
 
         /** POST /api/auth/logout */
@@ -112,14 +118,41 @@ public class AuthController {
                 return ResponseEntity.noContent().build();
         }
 
+        /** POST /api/auth/forgot-password */
+        @PostMapping("/forgot-password")
+        public ForgotPasswordResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+                return authAppService.forgotPassword(request);
+        }
+
+        /** POST /api/auth/verify-reset-otp */
+        @PostMapping("/verify-reset-otp")
+        public ResetTokenResponse verifyResetOtp(@Valid @RequestBody VerifyResetOtpRequest request) {
+                return authAppService.verifyResetOtp(request);
+        }
+
+        /** POST /api/auth/verify-old-password */
+        @PostMapping("/verify-old-password")
+        public ResetTokenResponse verifyOldPassword(
+                        @AuthenticationPrincipal AuthenticatedSession principal,
+                        @Valid @RequestBody VerifyOldPasswordRequest request) {
+                return authAppService.verifyOldPassword(principal.userId(), request);
+        }
+
+        /** POST /api/auth/reset-password */
+        @PostMapping("/reset-password")
+        public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+                authAppService.resetPassword(request);
+                return ResponseEntity.noContent().build();
+        }
+
         // -- Private ---------------------------------------------------------------
 
         private ResponseEntity<AuthResponse> buildResponseWithCookie(TokenPair tokenPair, HttpStatus status) {
                 ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
                                 .httpOnly(true)
-                                .secure(cookieSecure)
+                                .secure(appProperties.security().cookieSecure())
                                 .path("/api/auth/refresh")
-                                .maxAge(jwtTokenProvider.getRefreshTokenExpirySeconds())
+                                .maxAge(tokenPair.refreshTokenExpiresIn())
                                 .build();
 
                 AuthResponse responseBody = new AuthResponse(
@@ -136,7 +169,7 @@ public class AuthController {
         private ResponseCookie expiredRefreshCookie() {
                 return ResponseCookie.from("refreshToken", "")
                                 .httpOnly(true)
-                                .secure(cookieSecure)
+                                .secure(appProperties.security().cookieSecure())
                                 .path("/api/auth/refresh")
                                 .maxAge(0)
                                 .build();

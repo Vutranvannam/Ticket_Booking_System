@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,13 +39,14 @@ public class User extends BaseEntity {
     private String avatarUrl;
 
     @Column(name = "is_email_verified", nullable = false)
-    private boolean isEmailVerified = false;
+    private boolean emailVerified = false;
 
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
-    @Column(name = "last_login_at")
-    private Instant lastLoginAt;
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version = 0;
 
     @Column(name = "security_stamp", nullable = false)
     private long securityStamp = 1L;
@@ -75,7 +77,7 @@ public class User extends BaseEntity {
         User user = new User();
         user.email = email;
         user.fullName = fullName;
-        user.isEmailVerified = true;
+        user.emailVerified = true;
         return user;
     }
 
@@ -99,7 +101,7 @@ public class User extends BaseEntity {
     }
 
     public void markEmailVerified() {
-        this.isEmailVerified = true;
+        this.emailVerified = true;
     }
 
     public void addRole(Role role) {
@@ -120,10 +122,6 @@ public class User extends BaseEntity {
 
     public void increasePermissionVersion() {
         this.permissionVersion++;
-    }
-
-    public void recordLogin() {
-        this.lastLoginAt = Instant.now();
     }
 
     public void softDelete() {

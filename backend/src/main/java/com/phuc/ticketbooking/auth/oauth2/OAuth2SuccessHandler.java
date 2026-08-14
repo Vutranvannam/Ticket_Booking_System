@@ -9,8 +9,8 @@ import com.phuc.ticketbooking.common.util.RequestUtils;
 import com.phuc.ticketbooking.user.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.phuc.ticketbooking.common.config.AppProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -23,90 +23,83 @@ import java.util.UUID;
 /**
  * Handles successful OAuth2 Google authentication.
  *
- * <p>Flow:
+ * <p>
+ * Flow:
  * <ol>
- *   <li>Create a new session (sessionId, metadata).</li>
- *   <li>Generate a refresh token (with sessionId). No access token is generated here.</li>
- *   <li>Store session and refresh token hash in Redis.</li>
- *   <li>Warm up the security cache.</li>
- *   <li>Set refresh token as an HttpOnly cookie (path = /api/auth/refresh).</li>
- *   <li>Redirect to the configured frontend success URL (clean URL, no token).</li>
+ * <li>Create a new session (sessionId, metadata).</li>
+ * <li>Generate a refresh token (with sessionId). No access token is generated
+ * here.</li>
+ * <li>Store session and refresh token hash in Redis.</li>
+ * <li>Warm up the security cache.</li>
+ * <li>Set refresh token as an HttpOnly cookie (path = /api/auth/refresh).</li>
+ * <li>Redirect to the configured frontend success URL (clean URL, no
+ * token).</li>
  * </ol>
  *
- * <p>The frontend then calls {@code POST /api/auth/refresh} (cookie sent automatically)
- * to receive an access token, and {@code GET /api/users/me} to retrieve user info.
+ * <p>
+ * The frontend then calls {@code POST /api/auth/refresh} (cookie sent
+ * automatically)
+ * to receive an access token, and {@code GET /api/users/me} to retrieve user
+ * info.
  * The access token never appears in any URL.
  */
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final JwtTokenProvider jwtTokenProvider;
-    private final RefreshTokenCacheService refreshTokenCacheService;
-    private final SessionCacheService sessionCacheService;
-    private final UserSecurityCacheService userSecurityCacheService;
+        private final JwtTokenProvider jwtTokenProvider;
+        private final RefreshTokenCacheService refreshTokenCacheService;
+        private final SessionCacheService sessionCacheService;
+        private final UserSecurityCacheService userSecurityCacheService;
+        private final AppProperties appProperties;
 
-    @Value("${app.jwt.refresh-token-expiry}")
-    private long refreshTokenExpirySeconds;
+        @Override
+        public void onAuthenticationSuccess(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        Authentication authentication) throws IOException {
 
-    /** Frontend URL to redirect to after successful OAuth2 login. */
-    @Value("${app.oauth2.redirect-uri}")
-    private String frontendSuccessUrl;
+                CustomOAuth2User principal = (CustomOAuth2User) authentication.getPrincipal();
+                User user = principal.getUser();
 
-    /**
-     * When {@code true}, the refresh-token cookie carries the {@code Secure} flag
-     * (required for HTTPS in staging/production). Defaults to {@code false} for
-     * local HTTP development.
-     */
-    @Value("${app.security.cookie-secure:false}")
-    private boolean cookieSecure;
+                UUID sessionId = UUID.randomUUID();
 
-    @Override
-    public void onAuthenticationSuccess(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Authentication authentication) throws IOException {
+                // Only a refresh token is generated here.
+                // The access token will be issued later by POST /api/auth/refresh.
+                String refreshToken = jwtTokenProvider.generateRefreshToken(
+                                user.getId(), sessionId, user.getSecurityStamp());
 
-        CustomOAuth2User principal = (CustomOAuth2User) authentication.getPrincipal();
-        User user = principal.getUser();
+                // Store session metadata in Redis
+                SessionCache session = new SessionCache(
+                                sessionId,
+                                Instant.now(),
+                                Instant.now(),
+                                RequestUtils.extractIp(request),
+                                RequestUtils.extractUserAgent(request),
+                                RequestUtils.extractDeviceName(request));
+                sessionCacheService.store(user.getId(), session);
 
-        UUID sessionId = UUID.randomUUID();
+                // Store refresh token hash in Redis (per-session)
+                refreshTokenCacheService.store(user.getId(), sessionId, refreshToken);
 
-        // Only a refresh token is generated here.
-        // The access token will be issued later by POST /api/auth/refresh.
-        String refreshToken = jwtTokenProvider.generateRefreshToken(
-                user.getId(), sessionId, user.getSecurityStamp());
+                // Warm up security cache
+                userSecurityCacheService.putUserSecurityCache(user);
 
-        // Store session metadata in Redis
-        SessionCache session = new SessionCache(
-                sessionId,
-                Instant.now(),
-                Instant.now(),
-                RequestUtils.extractIp(request),
-                RequestUtils.extractUserAgent(request),
-                RequestUtils.extractDeviceName(request));
-        sessionCacheService.store(user.getId(), session);
+                // Set HttpOnly refresh token cookie — frontend uses this to call
+                // /api/auth/refresh
+                ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                                .httpOnly(true)
+                                .secure(appProperties.security().cookieSecure())
+                                .path("/api/auth/refresh")
+                                .maxAge(appProperties.jwt().refreshTokenExpiry())
+                                .build();
+                response.addHeader("Set-Cookie", cookie.toString());
 
-        // Store refresh token hash in Redis (per-session)
-        refreshTokenCacheService.store(user.getId(), sessionId, refreshToken);
+                clearAuthenticationAttributes(request);
 
-        // Warm up security cache
-        userSecurityCacheService.putUserSecurityCache(user);
-
-        // Set HttpOnly refresh token cookie — frontend uses this to call /api/auth/refresh
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/api/auth/refresh")
-                .maxAge(refreshTokenExpirySeconds)
-                .build();
-        response.addHeader("Set-Cookie", cookie.toString());
-
-        clearAuthenticationAttributes(request);
-
-        // Redirect to frontend success page — no token in URL.
-        // Frontend calls POST /api/auth/refresh to obtain an access token,
-        // then GET /api/users/me for the user profile.
-        getRedirectStrategy().sendRedirect(request, response, frontendSuccessUrl);
-    }
+                // Redirect to frontend success page — no token in URL.
+                // Frontend calls POST /api/auth/refresh to obtain an access token,
+                // then GET /api/users/me for the user profile.
+                getRedirectStrategy().sendRedirect(request, response, appProperties.oauth2().redirectUri());
+        }
 }

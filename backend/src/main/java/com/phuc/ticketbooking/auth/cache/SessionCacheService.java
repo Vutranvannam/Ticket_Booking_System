@@ -1,7 +1,7 @@
 package com.phuc.ticketbooking.auth.cache;
 
+import com.phuc.ticketbooking.common.config.AppProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -51,8 +51,7 @@ public class SessionCacheService {
     /** Plain-string template -- used for the index Set (bare sessionId members). */
     private final StringRedisTemplate stringRedisTemplate;
 
-    @Value("${app.jwt.refresh-token-expiry}")
-    private long refreshTokenExpirySeconds;
+    private final AppProperties appProperties;
 
     // -- Write -----------------------------------------------------------------
 
@@ -64,7 +63,7 @@ public class SessionCacheService {
     public void store(UUID userId, SessionCache session) {
         String sessionKey = sessionKey(userId, session.sessionId());
         String indexKey   = userSessionsKey(userId);
-        Duration ttl      = Duration.ofSeconds(refreshTokenExpirySeconds);
+        Duration ttl      = Duration.ofSeconds(appProperties.jwt().refreshTokenExpiry());
 
         // Store session data as JSON
         redisTemplate.opsForValue().set(sessionKey, session, ttl);

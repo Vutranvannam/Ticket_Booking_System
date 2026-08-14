@@ -12,7 +12,7 @@ public record UserResponse(
         String fullName,
         String phone,
         String avatarUrl,
-        boolean isEmailVerified,
+        boolean emailVerified,
         Set<String> roles,
         Set<String> permissions
 ) {

@@ -21,7 +21,6 @@ CREATE TABLE users (
     avatar_url      VARCHAR(500),
     is_email_verified BOOLEAN       NOT NULL DEFAULT FALSE,
     locked_until    TIMESTAMPTZ,
-    last_login_at   TIMESTAMPTZ,
     security_stamp     BIGINT       NOT NULL DEFAULT 1,
     permission_version BIGINT       NOT NULL DEFAULT 1,
     version         INT             NOT NULL DEFAULT 0,
@@ -160,7 +159,7 @@ INSERT INTO users (id, email, password_hash, full_name, is_email_verified, secur
 VALUES (
     'ffffffff-ffff-ffff-ffff-ffffffffffff',
     'admin@ticketbooking.local',
-    '$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+    '$2a$12$B0usGi5BqKCN7zJWzQWHiOVOYIp60aIrHxXO4MyRznFs.93hRuKWi',
     'Super Admin',
     TRUE,
     1,

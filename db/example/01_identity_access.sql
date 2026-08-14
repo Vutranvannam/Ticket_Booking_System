@@ -21,7 +21,6 @@ CREATE TABLE users (
     avatar_url      VARCHAR(500),
     is_email_verified BOOLEAN       NOT NULL DEFAULT FALSE,
     locked_until    TIMESTAMPTZ,
-    last_login_at   TIMESTAMPTZ,
     version         INT             NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),

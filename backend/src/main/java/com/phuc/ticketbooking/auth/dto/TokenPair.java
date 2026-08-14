@@ -6,6 +6,7 @@ public record TokenPair(
         String accessToken,
         String refreshToken,
         long expiresIn,
+        long refreshTokenExpiresIn,
         UserResponse user
 ) {
 }

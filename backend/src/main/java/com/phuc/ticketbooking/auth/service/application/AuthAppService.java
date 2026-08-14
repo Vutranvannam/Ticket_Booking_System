@@ -1,9 +1,15 @@
 package com.phuc.ticketbooking.auth.service.application;
 
 import com.phuc.ticketbooking.auth.dto.TokenPair;
+import com.phuc.ticketbooking.auth.dto.request.ForgotPasswordRequest;
 import com.phuc.ticketbooking.auth.dto.request.LoginRequest;
 import com.phuc.ticketbooking.auth.dto.request.RegisterRequest;
+import com.phuc.ticketbooking.auth.dto.request.ResetPasswordRequest;
+import com.phuc.ticketbooking.auth.dto.request.VerifyOldPasswordRequest;
+import com.phuc.ticketbooking.auth.dto.request.VerifyResetOtpRequest;
+import com.phuc.ticketbooking.auth.dto.response.ForgotPasswordResponse;
 import com.phuc.ticketbooking.auth.dto.response.SessionResponse;
+import com.phuc.ticketbooking.auth.dto.response.ResetTokenResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
@@ -46,4 +52,30 @@ public interface AuthAppService {
      * Revokes a specific session (remote logout from another device).
      */
     void revokeSession(UUID userId, UUID sessionId);
+
+    /**
+     * Step 1: Generates a 6-digit OTP, stores its SHA-256 hash in Redis (TTL 5 min),
+     * and publishes an async email event via RabbitMQ.
+     *
+     * <p>Silent on unknown emails (anti-enumeration).
+     */
+    ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request);
+
+    /**
+     * Step 2: Verifies the OTP (SHA-256 comparison) and, on success,
+     * returns a one-time reset token (UUID, TTL 15 min) stored in Redis.
+     */
+    ResetTokenResponse verifyResetOtp(VerifyResetOtpRequest request);
+
+    /**
+     * Verifies the old password of an authenticated user.
+     * On success, returns a one-time reset token (UUID, TTL 15 min) stored in Redis.
+     */
+    ResetTokenResponse verifyOldPassword(UUID userId, VerifyOldPasswordRequest request);
+
+    /**
+     * Step 3: Validates the reset token, changes the user's password,
+     * bumps securityStamp, and revokes all active sessions.
+     */
+    void resetPassword(ResetPasswordRequest request);
 }

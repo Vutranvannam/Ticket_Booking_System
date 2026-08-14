@@ -1,4 +1,4 @@
-﻿-- Atomically revokes all sessions for a user.
+-- Atomically revokes all sessions for a user.
 --
 -- KEYS[1] = user:sessions:{userId}   (session index Set)
 -- ARGV[1] = session key prefix, e.g. "session:{userId}:"

@@ -63,6 +63,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         User user = User.createOAuth2User(email, fullName != null ? fullName : email);
         Role customerRole = roleDomainService.findByName(AppConstants.CUSTOMER_ROLE);
         user.addRole(customerRole);
-        return userDomainService.save(user);
+        user = userDomainService.save(user); // commits immediately (own @Transactional)
+
+        // Reload with roles + permissions so OAuth2SuccessHandler can populate
+        // the security cache without hitting LazyInitializationException.
+        return userDomainService.findActiveUserByIdWithRolesAndPermissions(user.getId());
     }
 }

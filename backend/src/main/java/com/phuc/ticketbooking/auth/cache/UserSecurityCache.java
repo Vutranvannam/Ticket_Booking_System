@@ -1,5 +1,7 @@
 package com.phuc.ticketbooking.auth.cache;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
  * When {@code securityStamp} or {@code permissionVersion} changes,
  * the cache must be explicitly evicted via {@link UserSecurityCacheService#evictUserSecurityCache(UUID)}.
  */
+
 public record UserSecurityCache(
         UUID userId,
         String email,
@@ -30,7 +33,11 @@ public record UserSecurityCache(
     /**
      * Returns Spring Security {@link GrantedAuthority} collection built from
      * the cached authority strings (ROLE_xxx + permission codes).
+     * <p>
+     * Excluded from JSON serialization — this is a computed view of {@code authorities}
+     * and cannot be deserialized back (no setter/constructor param).
      */
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getGrantedAuthorities() {
         return authorities.stream()
                 .map(SimpleGrantedAuthority::new)

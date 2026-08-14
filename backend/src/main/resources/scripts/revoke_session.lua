@@ -1,4 +1,4 @@
-﻿-- Atomically revokes a single session.
+-- Atomically revokes a single session.
 --
 -- KEYS[1] = session:{userId}:{sessionId}   (session data key)
 -- KEYS[2] = refresh:{userId}:{sessionId}   (refresh token hash key)

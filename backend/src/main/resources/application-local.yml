@@ -15,6 +15,7 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
+      default_batch_fetch_size: 20
     properties:
       hibernate:
         format_sql: true
@@ -40,11 +41,28 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: openid,profile,email
+            scope: profile,email
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
   jackson:
     time-zone: ${JACKSON_TIME_ZONE:Asia/Ho_Chi_Minh}
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:admin}
+    publisher-confirm-type: correlated
+    publisher-returns: true
 
 logging:
   level:
@@ -57,5 +75,19 @@ app:
     refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800}
   oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:5173/oauth2/success}
+    failure-uri: ${OAUTH2_FAILURE_URI:http://localhost:5173/login?error=oauth2}
   security:
     cookie-secure: ${COOKIE_SECURE:false}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    cache-ttl-seconds: 3600
+  mail:
+    from: ${MAIL_FROM:noreply@ticketbooking.com}
+  otp:
+    expiry-seconds: 300
+    max-attempts: 5
+    cooldown-seconds: 60
+  reset-token:
+    expiry-seconds: 900
+  cache:
+    email-ttl-hours: 24

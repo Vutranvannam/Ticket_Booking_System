@@ -1,5 +1,6 @@
 package com.phuc.ticketbooking.user.cache;
 
+import com.phuc.ticketbooking.common.config.AppProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -35,9 +36,9 @@ import java.time.Duration;
 public class EmailCacheService {
 
     private static final String CACHE_KEY = "emails:active";
-    private static final Duration TTL = Duration.ofHours(24);
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final AppProperties appProperties;
 
     /**
      * Returns {@code true} if the email is present in the active-email set.
@@ -58,7 +59,7 @@ public class EmailCacheService {
      */
     public void add(String email) {
         stringRedisTemplate.opsForSet().add(CACHE_KEY, normalise(email));
-        stringRedisTemplate.expire(CACHE_KEY, TTL);
+        stringRedisTemplate.expire(CACHE_KEY, Duration.ofHours(appProperties.cache().emailTtlHours()));
     }
 
     /**

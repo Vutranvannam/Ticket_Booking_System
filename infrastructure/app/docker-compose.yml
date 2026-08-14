@@ -50,12 +50,30 @@ services:
     networks:
       - ticket_booking_network
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: ticket_booking_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - ticket_booking_network
+
 volumes:
   postgres_data:
     name: ticket_booking_postgres_data
 
   redis_data:
     name: ticket_booking_redis_data
+
+  rabbitmq_data:
+    name: ticket_booking_rabbitmq_data
 
 networks:
   ticket_booking_network:

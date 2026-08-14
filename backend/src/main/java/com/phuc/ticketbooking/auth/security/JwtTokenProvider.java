@@ -9,7 +9,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
+import com.phuc.ticketbooking.common.config.AppProperties;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -50,13 +50,10 @@ public class JwtTokenProvider {
     private final long accessTokenExpirySeconds;
     private final long refreshTokenExpirySeconds;
 
-    public JwtTokenProvider(
-            @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.access-token-expiry}") long accessTokenExpirySeconds,
-            @Value("${app.jwt.refresh-token-expiry}") long refreshTokenExpirySeconds) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenExpirySeconds = accessTokenExpirySeconds;
-        this.refreshTokenExpirySeconds = refreshTokenExpirySeconds;
+    public JwtTokenProvider(AppProperties appProperties) {
+        this.secretKey = Keys.hmacShaKeyFor(appProperties.jwt().secret().getBytes(StandardCharsets.UTF_8));
+        this.accessTokenExpirySeconds = appProperties.jwt().accessTokenExpiry();
+        this.refreshTokenExpirySeconds = appProperties.jwt().refreshTokenExpiry();
     }
 
     // ── Token Generation ──────────────────────────────────────────────────────

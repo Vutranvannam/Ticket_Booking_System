@@ -2,7 +2,7 @@ package com.phuc.ticketbooking.auth.cache;
 
 import com.phuc.ticketbooking.user.entity.Role;
 import com.phuc.ticketbooking.user.entity.User;
-import com.phuc.ticketbooking.user.service.domain.UserDomainService;
+import com.phuc.ticketbooking.common.config.AppProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -25,47 +25,28 @@ import java.util.stream.Stream;
  * population.</li>
  * </ul>
  * <p>
- * When the cache misses, this service loads the user from DB via
- * {@link UserDomainService}
- * and populates the cache automatically.
+ * <p>
+ * When the cache misses, it should be loaded from DB via an Application
+ * Service.
  */
 @Service
 @RequiredArgsConstructor
 public class UserSecurityCacheService {
 
     private static final String SECURITY_KEY_PREFIX = "us:";
-    private static final Duration SECURITY_TTL = Duration.ofHours(1);
 
     private final RedisTemplate<String, Object> redisTemplate;
-    private final UserDomainService userDomainService;
+    private final AppProperties appProperties;
 
     // ── UserSecurityCache ─────────────────────────────────────────────────────
 
     /**
      * Gets the cached security profile for a user.
-     * Returns null on cache miss — caller should use
-     * {@link #getOrLoadUserSecurityCache(UUID)}.
+     * Returns null on cache miss.
      */
     public UserSecurityCache getUserSecurityCache(UUID userId) {
         String key = securityKey(userId);
         return (UserSecurityCache) redisTemplate.opsForValue().get(key);
-    }
-
-    /**
-     * Gets the cached security profile, loading from DB on cache miss.
-     * This is the preferred method for the JWT filter.
-     */
-    public UserSecurityCache getOrLoadUserSecurityCache(UUID userId) {
-        UserSecurityCache cache = getUserSecurityCache(userId);
-        if (cache != null) {
-            return cache;
-        }
-
-        // Cache miss — load from DB and populate
-        User user = userDomainService.findActiveUserByIdWithRolesAndPermissions(userId);
-        cache = buildSecurityCache(user);
-        putUserSecurityCache(userId, cache);
-        return cache;
     }
 
     /**
@@ -94,7 +75,7 @@ public class UserSecurityCacheService {
 
     private void putUserSecurityCache(UUID userId, UserSecurityCache cache) {
         String key = securityKey(userId);
-        redisTemplate.opsForValue().set(key, cache, SECURITY_TTL);
+        redisTemplate.opsForValue().set(key, cache, Duration.ofSeconds(appProperties.security().cacheTtlSeconds()));
     }
 
     private UserSecurityCache buildSecurityCache(User user) {

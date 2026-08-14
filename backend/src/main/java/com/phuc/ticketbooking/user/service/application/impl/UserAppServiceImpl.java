@@ -30,7 +30,7 @@ public class UserAppServiceImpl implements UserAppService {
 
     @Override
     public UserResponse updateMe(UUID userId, UpdateProfileRequest request) {
-        User user = userDomainService.findActiveUserById(userId);
+        User user = userDomainService.findActiveUserByIdWithRolesAndPermissions(userId);
 
         if (request.fullName() != null) {
             user.changeFullName(request.fullName());

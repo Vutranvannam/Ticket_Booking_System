@@ -2,7 +2,7 @@ package com.phuc.ticketbooking.auth.security;
 
 import com.phuc.ticketbooking.auth.cache.SessionCacheService;
 import com.phuc.ticketbooking.auth.cache.UserSecurityCache;
-import com.phuc.ticketbooking.auth.cache.UserSecurityCacheService;
+import com.phuc.ticketbooking.auth.service.application.AuthSecurityAppService;
 import com.phuc.ticketbooking.auth.security.payload.AccessTokenPayload;
 import com.phuc.ticketbooking.common.constant.AppConstants;
 import com.phuc.ticketbooking.common.exception.ApiException;
@@ -49,7 +49,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserSecurityCacheService userSecurityCacheService;
+    private final AuthSecurityAppService authSecurityAppService;
     private final SessionCacheService sessionCacheService;
 
     @Override
@@ -70,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UUID sessionId = payload.sessionId();
 
             // ── Step 1: Get security cache (auto-loads from DB on miss) ───
-            UserSecurityCache securityCache = userSecurityCacheService.getOrLoadUserSecurityCache(userId);
+            UserSecurityCache securityCache = authSecurityAppService.getOrLoadSecurityProfile(userId);
 
             // ── Step 2: Version validation ────────────────────────────────
             if (payload.securityStamp() != securityCache.securityStamp()) {

@@ -28,9 +28,11 @@ public class UserDomainServiceImpl implements UserDomainService {
     }
 
     /**
-     * Finds an active (non-deleted) user by ID, eagerly fetching roles and permissions.
+     * Finds an active (non-deleted) user by ID, eagerly fetching roles and
+     * permissions.
      *
-     * <p>The {@code deletedAt IS NULL} filter is enforced inside the JPQL query in
+     * <p>
+     * The {@code deletedAt IS NULL} filter is enforced inside the JPQL query in
      * {@link com.phuc.ticketbooking.user.repository.UserRepository#findByIdWithRolesAndPermissions},
      * so deleted users are excluded at the database level.
      */
@@ -70,6 +72,17 @@ public class UserDomainServiceImpl implements UserDomainService {
     @Override
     @Transactional(readOnly = true)
     public Page<User> findAllActive(Pageable pageable) {
-        return userRepository.findAllByDeletedAtIsNull(pageable);
+        Page<User> page = userRepository.findAllByDeletedAtIsNull(pageable);
+
+        // Trigger Lazy Load while the Session (Transaction) is still open.
+        // Thanks to default_batch_fetch_size = 20, Hibernate will batch these fetches
+        // instead of executing individual queries (avoiding N+1 problem).
+        page.getContent().forEach(user -> {
+            user.getRoles().forEach(role -> {
+                role.getPermissions().size();
+            });
+        });
+
+        return page;
     }
 }

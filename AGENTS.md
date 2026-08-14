@@ -119,6 +119,12 @@ Docker (`infrastructure/app/`) uses a **separate** `.env` with different variabl
 
 ## Global Backend Conventions
 
+### Configuration
+
+- **No Hardcoding**: Never hardcode configuration values (e.g., Cache TTLs, Retry Attempts, Expirations, URLs, Ports, Secret Keys) using `static final` constants or literals in Java files.
+- **Centralized Properties**: Always define properties in `application-local.yml` (and map them to `.env` where appropriate). Bind them using Spring's `@ConfigurationProperties` into the central `common/config/AppProperties.java` record.
+- **Injection Rule**: NEVER use field-level `@Value` injection. Always inject the `AppProperties` record via constructor injection (`@RequiredArgsConstructor`) into your services.
+
 ### Package Structure (per module)
 
 ```
@@ -151,7 +157,7 @@ module/
 - Java `record`s — **never expose JPA entities directly in API responses**
 - Split into `dto/request/` and `dto/response/` packages
 - Request DTOs: validated with Jakarta Bean Validation (`@NotBlank`, `@Email`, `@Size`, ...)
-- Use **MapStruct** (`mapper/` package) for Entity ↔ DTO conversion
+- Use **MapStruct** (`mapper/` package) for Entity ↔ DTO conversion. **Rule:** ALWAYS declare MapStruct mappers as `abstract class` instead of `interface` (and use `protected` instead of `default` for custom mapping methods). This prevents a known bug in Eclipse JDT / VS Code language server where it throws an erroneous `java.util.ArrayList` error when compiling MapStruct mappers with Lombok.
 - IDs in the URL path are NOT repeated in the request body
 
 ### Services
@@ -258,7 +264,197 @@ Use **permission-based** authorization — never role-based. The DB has a fine-g
 
 ## Global Frontend Conventions
 
-*(To be filled in when frontend is scaffolded in V1)*
+### Tech Stack
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| React | 19 | |
+| TypeScript | ~6.0 | strict mode |
+| Vite | 8 | bundler, `@` alias → `src/` |
+| TailwindCSS | **4** | via `@tailwindcss/vite` plugin — no `tailwind.config.js` |
+| React Router | v7 | `useRoutes()` pattern |
+| Redux Toolkit | 2 | global state |
+| React Hook Form | 7 | + Zod 3 for validation |
+| Axios | 1 | HTTP client |
+| class-variance-authority | 0.7 | component variants (`cva`) |
+| framer-motion | 12 | animations |
+| lucide-react + react-icons | latest | icons |
+| jwt-decode | 4 | decode JWT claims client-side |
+
+### Project Layout
+
+```
+frontend/
+├── package.json
+├── vite.config.ts          # alias @/ → src/, proxy /api → :8080, port 5173
+└── src/
+    ├── main.tsx             # Entry: <Provider store> + <BrowserRouter> + <App>
+    ├── index.css            # Tailwind 4 base import + global styles
+    │
+    ├── app/                 # Bootstrap — NO business logic here
+    │   ├── App.tsx          # Renders <AppRouter />
+    │   ├── router/
+    │   │   ├── AppRouter.tsx              # useRoutes([...all feature routes])
+    │   │   ├── {Feature}Router.tsx        # 1 file per domain feature
+    │   │   └── guards/
+    │   │       ├── ProtectedRoute.tsx     # auth check + optional permission check
+    │   │       └── PublicRoute.tsx        # redirect to / if authenticated
+    │   └── store/
+    │       ├── index.ts     # configureStore — register all feature reducers here
+    │       └── hook.ts      # useAppDispatch + useAppSelector (typed)
+    │
+    ├── core/                # Platform infrastructure — NO UI components
+    │   ├── api/
+    │   │   ├── endpoints.ts             # All API endpoint constants (AUTH_ENDPOINTS, USER_ENDPOINTS, ...)
+    │   │   └── client/
+    │   │       ├── publicClient.ts      # Unauthenticated Axios instance
+    │   │       └── privateClient.ts     # Authenticated — auto-attach Bearer + silent refresh on 401
+    │   ├── auth/
+    │   │   └── tokenStorage.ts          # In-memory accessToken store (see Token Storage rules)
+    │   ├── config/
+    │   │   └── constants.ts             # APP_NAME, PAGINATION, ROLES constants
+    │   └── types/
+    │       ├── api.ts                   # ApiResponse<T>, PaginatedResponse<T>, ApiError
+    │       └── ...
+    │
+    ├── shared/              # Reusable UI — NO feature-specific logic
+    │   ├── components/
+    │   │   ├── atoms/       # Primitives: Button, Input, Badge, Avatar, Checkbox, Select, ...
+    │   │   ├── molecules/   # Compositions: DataTable, Pagination, Modal, FormField, ...
+    │   │   ├── organisms/   # (reserved for complex compositions)
+    │   │   └── layout/
+    │   │       ├── MainLayout.tsx  # Sidebar + Navbar + <Outlet /> — used by all protected routes
+    │   │       ├── SideBar.tsx
+    │   │       └── Navbar.tsx
+    │   ├── hooks/           # useDebounce, ... (generic, no feature coupling)
+    │   └── types/
+    │       └── user.type.ts # Shared User interface — MUST stay aligned with backend UserResponse
+    │
+    └── features/            # Feature-sliced — one directory per domain
+        ├── auth/            # V1
+        ├── users/           # V1
+        ├── home/            # V1
+        ├── venues/          # V2 — create when implementing V2
+        ├── events/          # V3
+        ├── bookings/        # V4
+        └── ticketing/       # V5
+```
+
+### Feature Module Structure
+
+Every feature directory follows the same layout:
+
+```
+features/{feature}/
+├── components/       # UI components scoped to this feature only
+│   ├── {feature}-form/
+│   └── {feature}-list/
+├── hooks/            # useXxxForm, useXxxList — encapsulate logic
+├── pages/            # XxxPage.tsx — one per route, lazy-loadable
+├── schemas/          # Zod schemas: xxx.schemas.ts
+├── services/         # xxx.service.ts — calls core/api/client, returns typed data
+├── store/            # xxx.slice.ts + xxx.thunk.ts + xxx.selectors.ts (if needed)
+├── types/            # xxx.types.ts — request/response interfaces
+└── index.ts          # Barrel exports (pages only — consumed by router files)
+```
+
+> **Empty packages**: Only create a sub-directory when it has at least one file. Do NOT pre-create empty folders.
+> **Rule**: **DO NOT define sub-components inside page files.** All UI components, even if used only by a single page, must be extracted to the feature's `components/` directory or `shared/components/`.
+
+### File Naming
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Page | `PascalCasePage.tsx` | `LoginPage.tsx` |
+| Component | `PascalCase.tsx` | `AuthLayout.tsx` |
+| Hook | `useCamelCase.ts` | `useLoginForm.ts` |
+| Service | `camelCase.service.ts` | `auth.service.ts` |
+| Schema | `camelCase.schemas.ts` | `auth.schemas.ts` |
+| Types | `camelCase.types.ts` | `auth.types.ts` |
+| Slice | `camelCase.slice.ts` | `auth.slice.ts` |
+| Thunk | `camelCase.thunk.ts` | `auth.thunk.ts` |
+| Selectors | `camelCase.selectors.ts` | `auth.selectors.ts` |
+| Router | `{Feature}Router.tsx` | `UserRouter.tsx` |
+
+### Routing
+
+- Feature routes defined in `app/router/{Feature}Router.tsx` → imported in `AppRouter.tsx`
+- Protected pages: wrapped with `<ProtectedRoute permission="PERMISSION_CODE">` — accepts optional permission string; if omitted, only auth is required
+- Public pages (login, register): wrapped with `<PublicRoute>` — redirects to `/` if already authenticated
+- The `MainLayout` is used for both authenticated and public storefront routes.
+- The `HomePage` (`/`) is public and does not require authentication.
+
+### State Management (Redux Toolkit)
+
+- One slice per feature: `{feature}.slice.ts`
+- Async side effects via `createAsyncThunk` in `{feature}.thunk.ts`
+- Memoized selectors in `{feature}.selectors.ts`
+- Reducers registered in `app/store/index.ts` — only place to `configureStore`
+- Use `useAppDispatch` / `useAppSelector` (never raw `useDispatch` / `useSelector`)
+- Zustand is installed but **not used** — stick to Redux Toolkit for consistency
+
+### Token Storage — In-Memory + HttpOnly Cookie
+
+**Access token**:
+- Stored **in memory only** (module-level variable in `core/auth/tokenStorage.ts`)
+- Never written to `localStorage` or `sessionStorage`
+- Lost on page refresh → `privateClient` silently re-fetches via refresh endpoint on first 401
+
+**Refresh token**:
+- Set by server as an **HttpOnly cookie** — not accessible from JavaScript
+- Automatically included by the browser in refresh requests (`withCredentials: true`)
+
+**`privateClient` auto-refresh flow**:
+1. Read `accessToken` from memory → attach as `Authorization: Bearer <token>`
+2. On 401 response → call `POST /auth/refresh` (browser sends cookie automatically)
+3. Store new `accessToken` in memory → retry the original request
+4. If refresh also fails → dispatch `logout` → redirect to `/login`
+
+### API Layer
+
+- `publicClient` — unauthenticated Axios instance (login, register, OTP, refresh)
+- `privateClient` — authenticated instance with auto-refresh interceptor
+- All endpoints are constants in `core/api/endpoints.ts` — never hardcode URL strings in services
+- Services return typed data directly (no raw `AxiosResponse` exposure)
+- Response unwrapping (e.g., extracting `.data` from `ApiResponse<T>`) done inside the client interceptor, not in services
+
+### Forms
+
+- Always use `react-hook-form` + `@hookform/resolvers/zod`
+- Zod schemas live in `features/{feature}/schemas/xxx.schemas.ts`
+- Validation messages in Vietnamese
+- Encapsulate form state + submit logic in a custom hook `useXxxForm.ts` — pages only call `const { form, onSubmit, ... } = useXxxForm()`
+
+### Components
+
+- Atoms use `cva` + `cn` (clsx + tailwind-merge) for variants — no ad-hoc className construction
+- Never use inline `style={{}}` — use Tailwind classes exclusively
+- All interactive elements must have unique, descriptive `id` attributes for testing
+
+### Design System (UI/UX)
+
+- **Colors**:
+  - Primary (Brand): High saturation Indigo (`#4f46e5` - Indigo 600) for Main CTAs, active states, and logo.
+  - Secondary/Accent: Vibrant Orange (`#ea580c`) or Rose (`#e11d48`) for high contrast highlights like Badges.
+  - Semantic: Emerald (Success), Orange (Warning), Rose (Danger/Error).
+  - Neutrals: Alternating sections must use `bg-background` and `bg-surface` (or `bg-surface-1`) to separate content horizontally.
+  - **Dark / Light Mode Support**: MUST use semantic CSS variables mapped in Tailwind (`bg-background`, `bg-surface`, `text-text-primary`, `text-text-secondary`, `border-border`) rather than hardcoding static colors (e.g. `bg-slate-50`, `text-slate-900`). This ensures the UI scales properly across Dark and Light themes.
+  - Badges/Tags floating on images MUST use solid background colors with white text for maximum contrast (not pastel).
+  - Use Tailwind CSS v4 variables (`--color-primary-*`) in `index.css`.
+- **Typography**:
+  - `Inter` or `Poppins` cho văn bản chung và tiêu đề.
+  - `JetBrains Mono` hoặc font monospace khác cho mã vé, mã giảm giá.
+- **Layout & Interaction**:
+  - **Navigation**: Sticky Navbar.
+  - **Cards**: Glassmorphism hoặc flat design với `shadow-md` và hover effects (`-translate-y-1`, `shadow-lg`).
+  - **Booking Flow**: Step-based (nhiều bước) có progress bar. **Bắt buộc Mobile-first** (touch targets ≥ 44px).
+- **Event Storefront (B2C)**:
+  - **Hero Section**: Use high-quality real-world event photography (concerts, crowds, theater) for backgrounds rather than abstract graphics. Ensure a clean "above the fold" layout.
+  - **Search & Filters**: Always provide quick filter chips (e.g., "Today", "This Weekend", "Near me") below the main search bar to speed up discovery.
+  - **Event Cards**: Cards MUST display crucial decision-making data: Date/Time, Venue, and Price Range (e.g., "Từ 500k"). Include Social Proof (e.g., "1.2k interested") and Scarcity Badges ("Selling Fast", "Sold Out"). Include interactive elements like 'Favorite/Heart' and 'Share' buttons directly on the card.
+- **Animations**:
+  - Dùng `framer-motion` cho transitions mượt mà giữa các bước.
+  - Ưu tiên dùng Skeleton loading thay cho spinner đơn điệu.
 
 ---
 

@@ -48,6 +48,29 @@ src/
 | `bookings` | V4 | 🔴 Pending | Multi-step checkout process. |
 | `ticketing` | V5 | 🔴 Pending | Ticket inventory and transfer UI. |
 
+## 🧭 Implemented Routes/Pages (V1)
+
+**Router Layout:** The frontend utilizes `react-router-dom` with a mix of Public and Protected routes.
+
+### Auth Pages (`/auth`)
+| Route | Component/Page | Protection | Description |
+|-------|----------------|------------|-------------|
+| `/login` | `LoginPage` | `<PublicRoute>` | Standard email/password + OAuth2 login |
+| `/register` | `RegisterPage` | `<PublicRoute>` | User registration form |
+| `/forgot-password` | `ForgotPasswordPage` | `<PublicRoute>` | Step 1: Request OTP |
+| `/reset-password` | `ResetPasswordPage` | `<PublicRoute>` | Step 2 & 3: Verify OTP and set new password |
+
+### User Pages (`/users`)
+| Route | Component/Page | Protection | Description |
+|-------|----------------|------------|-------------|
+| `/profile` | `ProfilePage` | `<ProtectedRoute>` | View and edit current user details |
+| `/admin/users` | `UserListPage` | `<ProtectedRoute permission="USER_LIST">` | Datatable with pagination for all users |
+
+### Storefront / Public
+| Route | Component/Page | Protection | Description |
+|-------|----------------|------------|-------------|
+| `/` | `HomePage` | None | Landing page showcasing featured events |
+
 ## 🚀 Running the Frontend Locally
 Make sure you run `npm install` (or `pnpm install` / `yarn install`) before the first run.
 

@@ -50,6 +50,29 @@ module_name/
 | `payment` | V4 | 🔴 Pending | Payment gateway integration. |
 | `ticketing`| V5 | 🔴 Pending | Ticket QR generation and transfer. |
 
+## 🔌 Implemented API Endpoints (V1)
+
+**Prefix:** `/api`
+
+### Auth Module (`/auth`)
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| `POST` | `/auth/register` | Register a new customer account | ❌ No |
+| `POST` | `/auth/login` | Login and receive JWT access & refresh tokens | ❌ No |
+| `POST` | `/auth/logout` | Logout (revokes session and refresh token) | ✅ Yes |
+| `POST` | `/auth/refresh` | Issue new access token via refresh token cookie | ❌ No (Cookie) |
+| `POST` | `/auth/forgot-password`| Send 6-digit OTP to user email | ❌ No |
+| `POST` | `/auth/verify-reset-otp`| Verify the OTP hash | ❌ No |
+| `POST` | `/auth/reset-password` | Reset password using valid reset token | ❌ No |
+| `GET`  | `/oauth2/authorization/google` | Trigger Google Social Login | ❌ No |
+
+### User Module (`/users`)
+| Method | Endpoint | Description | Auth Required | Permissions |
+|--------|----------|-------------|---------------|-------------|
+| `GET`  | `/users/me` | Get current user's profile | ✅ Yes | None |
+| `PUT`  | `/users/me` | Update current user's profile | ✅ Yes | None |
+| `GET`  | `/users`    | List all users (Paginated) | ✅ Yes | `USER_LIST` |
+
 ## 🚀 Running the Backend Locally
 Ensure you have copied `.env.example` to `.env` in the root folder, and that Docker containers (Postgres, Redis) are running.
 

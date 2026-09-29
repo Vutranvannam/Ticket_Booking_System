@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useOAuth2Success } from "../hooks/useOAuth2Success";
-import { CheckCircle, XCircle } from "lucide-react";
+import { XCircle } from "lucide-react";
 
 /**
  * Callback page for Google OAuth2 flow.

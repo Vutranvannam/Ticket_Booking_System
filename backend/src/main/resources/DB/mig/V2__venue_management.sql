@@ -136,3 +136,205 @@ CREATE INDEX idx_venues_visibility
 CREATE INDEX idx_venues_active
     ON venues (is_active)
     WHERE deleted_at IS NULL;
+
+
+-- ============================================================
+-- 4. VENUE MAPS
+-- ============================================================
+CREATE TABLE venue_maps (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    venue_id UUID NOT NULL,
+    created_by UUID,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    svg_content TEXT,
+    view_box VARCHAR(100) NOT NULL,
+    visibility VARCHAR(20) NOT NULL DEFAULT 'PRIVATE',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    version INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pk_venue_maps PRIMARY KEY (id),
+
+    CONSTRAINT fk_venue_maps_venue
+        FOREIGN KEY (venue_id)
+        REFERENCES venues (id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_venue_maps_creator
+        FOREIGN KEY (created_by)
+        REFERENCES users (id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT uq_venue_maps_name
+        UNIQUE (venue_id, name),
+
+    CONSTRAINT ck_venue_maps_visibility
+        CHECK (visibility IN ('PUBLIC', 'PRIVATE')),
+
+    CONSTRAINT ck_venue_maps_status
+        CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED'))
+);
+
+CREATE INDEX idx_venue_maps_venue_id
+    ON venue_maps (venue_id);
+
+CREATE INDEX idx_venue_maps_created_by
+    ON venue_maps (created_by);
+
+CREATE INDEX idx_venue_maps_visibility
+    ON venue_maps (visibility)
+    WHERE is_active = TRUE;
+
+CREATE INDEX idx_venue_maps_status
+    ON venue_maps (status)
+    WHERE is_active = TRUE;
+
+
+-- ============================================================
+-- 5. MAP REGIONS
+-- ============================================================
+CREATE TABLE map_regions (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    map_id UUID NOT NULL,
+    region_type_code VARCHAR(30) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    svg_element_id VARCHAR(100) NOT NULL,
+    seating_type VARCHAR(30) NOT NULL DEFAULT 'NONE',
+    capacity INT,
+    color_code VARCHAR(7),
+    is_bookable BOOLEAN NOT NULL DEFAULT FALSE,
+    display_order INT NOT NULL DEFAULT 0,
+    properties JSONB NOT NULL DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pk_map_regions PRIMARY KEY (id),
+
+    CONSTRAINT fk_map_regions_map
+        FOREIGN KEY (map_id)
+        REFERENCES venue_maps (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_map_regions_type
+        FOREIGN KEY (region_type_code)
+        REFERENCES region_types (code),
+
+    CONSTRAINT uq_map_regions_name
+        UNIQUE (map_id, name),
+
+    CONSTRAINT uq_map_regions_svg_element
+        UNIQUE (map_id, svg_element_id),
+
+    CONSTRAINT ck_map_regions_capacity
+        CHECK (capacity IS NULL OR capacity > 0),
+
+    CONSTRAINT ck_map_regions_seating_type
+        CHECK (
+            seating_type IN (
+                'NUMBERED',
+                'STANDING',
+                'OPEN_SEATING',
+                'NONE'
+            )
+        ),
+
+    CONSTRAINT ck_map_regions_bookable
+        CHECK (
+            NOT is_bookable
+            OR seating_type IN (
+                'NUMBERED',
+                'STANDING',
+                'OPEN_SEATING'
+            )
+        ),
+
+    CONSTRAINT ck_map_regions_capacity_required
+        CHECK (
+            seating_type NOT IN ('STANDING', 'OPEN_SEATING')
+            OR capacity IS NOT NULL
+        )
+);
+
+CREATE INDEX idx_map_regions_map_id
+    ON map_regions (map_id);
+
+CREATE INDEX idx_map_regions_svg_element
+    ON map_regions (map_id, svg_element_id);
+
+
+-- ============================================================
+-- 6. REGION MAPS
+-- ============================================================
+CREATE TABLE region_maps (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    region_id UUID NOT NULL,
+    name VARCHAR(200),
+    svg_content TEXT NOT NULL,
+    view_box VARCHAR(100) NOT NULL,
+    total_seats INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    version INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pk_region_maps PRIMARY KEY (id),
+
+    CONSTRAINT fk_region_maps_region
+        FOREIGN KEY (region_id)
+        REFERENCES map_regions (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_region_maps_region
+        UNIQUE (region_id)
+);
+
+CREATE INDEX idx_region_maps_region_id
+    ON region_maps (region_id);
+
+
+-- ============================================================
+-- 7. SEATS
+-- ============================================================
+CREATE TABLE seats (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    region_id UUID NOT NULL,
+    seat_type_code VARCHAR(30) NOT NULL,
+    row_label VARCHAR(10) NOT NULL,
+    seat_number INT NOT NULL,
+    svg_element_id VARCHAR(100) NOT NULL,
+    x_coord DECIMAL(10,2) NOT NULL,
+    y_coord DECIMAL(10,2) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pk_seats PRIMARY KEY (id),
+
+    CONSTRAINT fk_seats_region
+        FOREIGN KEY (region_id)
+        REFERENCES map_regions (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_seats_type
+        FOREIGN KEY (seat_type_code)
+        REFERENCES seat_types (code),
+
+    CONSTRAINT uq_seats_position
+        UNIQUE (region_id, row_label, seat_number),
+
+    CONSTRAINT uq_seats_svg_element
+        UNIQUE (region_id, svg_element_id),
+
+    CONSTRAINT ck_seats_number
+        CHECK (seat_number > 0)
+);
+
+CREATE INDEX idx_seats_region_id
+    ON seats (region_id);
+
+CREATE INDEX idx_seats_svg_element
+    ON seats (region_id, svg_element_id);

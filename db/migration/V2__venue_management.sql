@@ -338,3 +338,15 @@ CREATE INDEX idx_seats_region_id
 
 CREATE INDEX idx_seats_svg_element
     ON seats (region_id, svg_element_id);
+
+-- ============================================================
+-- 8. VENUE PERMISSIONS
+-- ============================================================
+
+INSERT INTO permissions (id, code, description, module) VALUES
+    (gen_random_uuid(), 'VENUE_LIST',   'List all venues',         'VENUE'),
+    (gen_random_uuid(), 'VENUE_VIEW',   'View venue details',      'VENUE'),
+    (gen_random_uuid(), 'VENUE_CREATE', 'Create a new venue',      'VENUE'),
+    (gen_random_uuid(), 'VENUE_UPDATE', 'Update an existing venue','VENUE'),
+    (gen_random_uuid(), 'VENUE_DELETE', 'Soft-delete a venue',     'VENUE');
+

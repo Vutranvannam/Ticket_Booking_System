@@ -96,10 +96,10 @@ if (-not $NoFrontend) {
 Set-Location "$frontendPath"
 
 if (!(Test-Path "node_modules")) {
-    pnpm install
+    npm install
 }
 
-pnpm dev
+npm run dev
 "@
 
     Start-Process powershell `

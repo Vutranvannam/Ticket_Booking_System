@@ -1,10 +1,10 @@
 package com.phuc.ticketbooking.venue.entity;
 
+import com.phuc.ticketbooking.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -24,11 +24,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Venue {
-
-    @Id
-    @Column(name = "id", nullable = false)
-    private UUID id;
+public class Venue extends BaseEntity {
 
     @Column(name = "created_by")
     private UUID createdBy;
@@ -80,12 +76,15 @@ public class Venue {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
-
     @Column(name = "deleted_at")
-    private OffsetDateTime deletedAt;
-}
+    private Instant deletedAt;
+
+    public void softDelete() {
+        this.deletedAt = Instant.now();
+        this.active = false;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
+}

@@ -23,4 +23,11 @@ public final class AppPermissions {
     public static final String USER_VIEW   = "USER_VIEW";
     public static final String USER_UPDATE = "USER_UPDATE";
     public static final String USER_DELETE = "USER_DELETE";
+
+    // ── Venue module ─────────────────────────────────────────────────────────
+    public static final String VENUE_LIST   = "VENUE_LIST";
+    public static final String VENUE_VIEW   = "VENUE_VIEW";
+    public static final String VENUE_CREATE = "VENUE_CREATE";
+    public static final String VENUE_UPDATE = "VENUE_UPDATE";
+    public static final String VENUE_DELETE = "VENUE_DELETE";
 }

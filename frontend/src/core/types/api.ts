@@ -8,9 +8,13 @@ export interface PaginatedResponse<T> {
   content: T[];
   page: number;
   size: number;
-  total: number;
+  totalElements: number;
   totalPages: number;
+  last: boolean;
+  total?: number;
 }
+
+export type PageResponse<T> = PaginatedResponse<T>;
 
 export interface ApiError {
   status: number;

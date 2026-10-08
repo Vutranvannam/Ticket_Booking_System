@@ -1,0 +1,89 @@
+TOM TAT CONTRACT CHO VENUE API (FRONTEND - BACKEND V2)
+======================================================
+
+1. CAC FILE THAY DOI
+--------------------
+- frontend/src/features/venues/types/venue.types.ts
+- frontend/src/features/venues/schemas/venue.schemas.ts
+- frontend/src/features/venues/types/index.ts
+
+2. TYPESCRIPT TYPE: Venue
+-------------------------
+export type VenueVisibility = "PUBLIC" | "PRIVATE";
+
+export interface Venue {
+  id: string;
+  createdBy?: string | null;
+  name: string;
+  address: string;
+  city: string;
+  state?: string | null;
+  country: string;
+  zipCode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone?: string | null;
+  email?: string | null;
+  description?: string | null;
+  visibility: VenueVisibility;
+  isActive: boolean;
+  active?: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+3. TYPESCRIPT TYPE: CreateVenueRequest
+--------------------------------------
+export interface CreateVenueRequest {
+  name: string;
+  address: string;
+  city: string;
+  state?: string;
+  country: string;
+  zipCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone?: string;
+  email?: string;
+  description?: string;
+  visibility?: VenueVisibility;
+}
+
+4. TYPESCRIPT TYPE: UpdateVenueRequest
+--------------------------------------
+export interface UpdateVenueRequest {
+  name?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zipCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone?: string;
+  email?: string;
+  description?: string;
+  visibility?: VenueVisibility;
+}
+
+5. ZOD SCHEMAS (frontend/src/features/venues/schemas/venue.schemas.ts)
+----------------------------------------------------------------------
+- VenueVisibilitySchema: z.enum(["PUBLIC", "PRIVATE"])
+- VenueSchema: Validate day du cac truong cua entity Venue (UUID, name, address, city, country, etc.)
+- CreateVenueRequestSchema: Validate du lieu tao moi (name, address, city, country bat buoc; toa do trong pham vi hop le)
+- UpdateVenueRequestSchema: Validate du lieu cap nhat (cac truong deu optional)
+- VenueSummarySchema: Validate response dang tom tat (VenueSummaryResponse)
+
+6. DIEM LECH (MISMATCH) CAN LUU Y GIUA FRONTEND & BACKEND
+----------------------------------------------------------
+a. Truong 'capacity':
+   - Da loai bo hoan toan khoi Venue vi capacity thuoc ve map_regions, khong thuoc bang venues.
+b. Truong 'createdBy':
+   - Database co cot created_by (UUID), entity Venue.java co createdBy.
+   - DTO VenueResponse.java cua backend hien chua tra ve createdBy.
+   - Frontend xu ly: khai bao createdBy?: string | null de tranh loi khi backend khong tra ve.
+c. Truong 'active' vs 'isActive':
+   - DB co cot is_active, entity dung active = true map toi is_active.
+   - Record VenueResponse.java su dung ten 'active'. Khi serialize ra JSON qua Jackson se thanh 'active'.
+   - Frontend xu ly: khai bao isActive: boolean kem active?: boolean de ho tro ca hai dang.

@@ -15,3 +15,11 @@ export const USER_ENDPOINTS = {
   LIST:   "/users",
   BY_ID:  (id: string) => `/users/${id}`,
 } as const;
+
+export const VENUE_ENDPOINTS = {
+  LIST: '/venues', // GET with query params for pagination & filters
+  DETAIL: (id: string) => `/venues/${id}`,
+  CREATE: '/venues', // POST
+  UPDATE: (id: string) => `/venues/${id}`,
+  DELETE: (id: string) => `/venues/${id}`,
+} as const;

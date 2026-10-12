@@ -12,4 +12,4 @@ public class VenueController {
 
     private final VenueAppService venueAppService;
 
-} 
+}

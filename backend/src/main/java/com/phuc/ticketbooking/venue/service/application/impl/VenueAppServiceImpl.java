@@ -20,6 +20,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+
 public class VenueAppServiceImpl implements VenueAppService {
 
     private final VenueDomainService venueDomainService;

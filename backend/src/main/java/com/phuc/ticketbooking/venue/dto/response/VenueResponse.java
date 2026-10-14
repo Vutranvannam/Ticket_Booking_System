@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record VenueResponse(
         UUID id,
+        UUID createdBy,
         String name,
         String address,
         String city,

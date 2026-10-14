@@ -63,6 +63,13 @@ export interface VenueSummary {
   isActive?: boolean;
 }
 
+export interface VenueListParams {
+  page?: number;
+  size?: number;
+  city?: string;
+  visibility?: VenueVisibility;
+}
+
 /**
  * Pagination response matching backend PageResponse<T>
  * Source of truth: com.phuc.ticketbooking.common.dto.PageResponse

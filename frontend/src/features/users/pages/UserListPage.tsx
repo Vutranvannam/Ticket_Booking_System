@@ -77,7 +77,7 @@ export default function UserListPage() {
         <Pagination
           currentPage={params.page}
           totalPages={data.totalPages}
-          totalElements={data.total}
+          totalElements={data.totalElements ?? data.total ?? 0}
           pageSize={params.size}
           onPageChange={(page) => updateParams({ page })}
           onPageSizeChange={(size) => updateParams({ size, page: 0 })}

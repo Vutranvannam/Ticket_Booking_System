@@ -18,9 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import com.phuc.ticketbooking.auth.security.AuthenticatedSession;
+import com.phuc.ticketbooking.common.exception.ApiException;
+import com.phuc.ticketbooking.common.exception.ErrorCode;
+import com.phuc.ticketbooking.venue.entity.VenueVisibility;
+
 @Service
 @RequiredArgsConstructor
-
 public class VenueAppServiceImpl implements VenueAppService {
 
     private final VenueDomainService venueDomainService;
@@ -35,24 +39,19 @@ public class VenueAppServiceImpl implements VenueAppService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<VenueSummaryResponse> getAll(Pageable pageable) {
-        Page<Venue> venuePage = venueDomainService.findAllActive(pageable);
-
-        return new PageResponse<>(
-                venuePage.getContent().stream()
-                        .map(venueMapper::toSummaryResponse)
-                        .toList(),
-                venuePage.getNumber(),
-                venuePage.getSize(),
-                venuePage.getTotalElements(),
-                venuePage.getTotalPages(),
-                venuePage.isLast());
+    public PageResponse<VenueSummaryResponse> getAll(String city, VenueVisibility visibility, Pageable pageable) {
+        Page<Venue> venuePage = venueDomainService.findAllActive(city, visibility, pageable);
+        var content = venuePage.getContent().stream()
+                .map(venueMapper::toSummaryResponse)
+                .toList();
+        return PageResponse.of(venuePage, content);
     }
 
     @Override
     @Transactional
-    public VenueResponse create(CreateVenueRequest request) {
+    public VenueResponse create(UUID createdBy, CreateVenueRequest request) {
         Venue venue = Venue.builder()
+                .createdBy(createdBy)
                 .name(request.name())
                 .address(request.address())
                 .city(request.city())
@@ -75,7 +74,10 @@ public class VenueAppServiceImpl implements VenueAppService {
 
     @Override
     @Transactional
-    public VenueResponse update(UUID venueId, UpdateVenueRequest request) {
+    public VenueResponse update(UUID venueId, AuthenticatedSession session, UpdateVenueRequest request) {
+        Venue existing = venueDomainService.findActiveVenueById(venueId);
+        checkOwnershipOrAdmin(existing, session);
+
         Venue updatedVenue = Venue.builder()
                 .name(request.name())
                 .address(request.address())
@@ -97,7 +99,26 @@ public class VenueAppServiceImpl implements VenueAppService {
 
     @Override
     @Transactional
-    public void delete(UUID venueId) {
+    public void delete(UUID venueId, AuthenticatedSession session) {
+        Venue existing = venueDomainService.findActiveVenueById(venueId);
+        checkOwnershipOrAdmin(existing, session);
         venueDomainService.softDelete(venueId);
+    }
+
+    private void checkOwnershipOrAdmin(Venue venue, AuthenticatedSession session) {
+        if (session == null) {
+            throw new ApiException(ErrorCode.UNAUTHORIZED, "Authentication required");
+        }
+
+        // Check if user has ADMIN or SUPER_ADMIN role
+        boolean isAdmin = session.userSecurity().authorities().stream()
+                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_SUPER_ADMIN"));
+
+        if (!isAdmin) {
+            // Organizer can only manage their own venues
+            if (venue.getCreatedBy() == null || !venue.getCreatedBy().equals(session.userId())) {
+                throw new ApiException(ErrorCode.ACCESS_DENIED, "You can only modify or delete venues you created");
+            }
+        }
     }
 }

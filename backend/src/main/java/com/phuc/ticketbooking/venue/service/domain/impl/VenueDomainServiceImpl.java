@@ -35,6 +35,15 @@ public class VenueDomainServiceImpl implements VenueDomainService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<Venue> findAllActive(String city, com.phuc.ticketbooking.venue.entity.VenueVisibility visibility, Pageable pageable) {
+        if (city == null && visibility == null) {
+            return venueRepository.findAllByDeletedAtIsNull(pageable);
+        }
+        return venueRepository.findWithFilters(city, visibility, pageable);
+    }
+
+    @Override
     @Transactional
     public Venue create(Venue venue) {
         return venueRepository.save(venue);

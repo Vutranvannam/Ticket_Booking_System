@@ -4,6 +4,7 @@ import { Spinner } from "@/shared/components/atoms/Spinner";
 import { authRoutes }      from "./AuthRoutes";
 import { homeRouter }      from "./HomeRouter";
 import { userRouter }      from "./UserRouter";
+import { venueRouter }     from "./VenueRouter";
 
 const fallback = (
   <div className="flex h-screen items-center justify-center">
@@ -16,6 +17,7 @@ export default function AppRouter() {
     ...authRoutes,
     ...homeRouter,
     ...userRouter,
+    ...venueRouter,
     { path: "*",   element: <Navigate to="/" replace /> },
   ]);
 
